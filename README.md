@@ -11,48 +11,48 @@ Model parameters
 
 **Loss Functions**
 
-1. pointwise: loss=skip-gram,  mse
-2. pairwise: loss=log-loss, max-margin
+* pointwise: loss=skip-gram,  mse
+* pairwise: loss=log-loss, max-margin
 
 
 **Content Embedding**
 
-1. CNN: model_choice=cnn_embedding
-2. RNN: model_choice=rnn_embedding
-3. Mean of word vectors: model_choice=basic_embedding
+* CNN: model_choice=cnn_embedding
+* RNN: model_choice=rnn_embedding
+* Mean of word vectors: model_choice=basic_embedding
 
 
 **Interaction Module**
 
-1. dot product
+* dot product
 
 
 **Sampling strategies**
 
-IID sampling: train_scheme=presample + shuffle_st=random
+* IID sampling: train_scheme=presample + shuffle_st=random
 
-Negative sampling: train_scheme=original
+* Negative sampling: train_scheme=original
 
-Stratified sampling: train_scheme=group_sample + shuffle_st=item
+* Stratified sampling: train_scheme=group_sample + shuffle_st=item
 
-Negative sharing: train_scheme=neg_shared
+* Negative sharing: train_scheme=neg_shared
 
-Stratified sampling with negative sharing: train_scheme=group_neg_shared
+* Stratified sampling with negative sharing: train_scheme=group_neg_shared
 
 
 **Other parameters explained**
 
-eval_scheme: whole@k for using all test items as candidates,  given@-1 for using true items + random sampled 10 items as candidates.
+* eval_scheme: whole@k for using all test items as candidates,  given@-1 for using true items + random sampled 10 items as candidates.
 
-neg_loss_weight & gamma: adjustment in functions
+* neg_loss_weight & gamma: adjustment in functions
 
-chop_size: number of positive links per item in a batch. Only approximately when set group_shuffling_trick=True (which is recommended).
+* chop_size: number of positive links per item in a batch. Only approximately when set group_shuffling_trick=True (which is recommended).
 
 
 Setup and Run
 --------------
 
-1. unzip data; and go to ./code/sampler, and run ./make.sh
+1. unzip data in ./data folder, and go to ./code/sampler, execute ./make.sh
 2. run using scripts under ./code/scripts/demos, which are prepared for each
    of the sampling strategies.
 3. after running, the results are stored in ./results folder
