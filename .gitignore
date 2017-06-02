@@ -1,0 +1,12 @@
+*.DS_Store
+*.pyc
+*.swp
+*.svg
+*.hdf5
+.ipynb_checkpoints
+*.pkl
+*.csv
+*.so
+*~
+
+results*
