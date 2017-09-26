@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import keras.backend as K
 import tensorflow as tf
-from utilities import get_cur_time
+from utilities import get_cur_time, safer_log
 from sklearn.metrics import roc_auc_score, average_precision_score
 
 
@@ -55,12 +55,12 @@ def get_original_loss(loss, batch_size_p, num_negatives, conf):
             sscaling = _get_gamma(conf)
             diff_mat = K.reshape(K.repeat(pos_interact_score, num_negatives),
                                  (-1, 1)) - neg_interact_score
-            task_loss = K.mean(-K.log(K.sigmoid(sscaling * diff_mat)))
+            task_loss = K.mean(-safer_log(K.sigmoid(sscaling * diff_mat)))
         elif loss == 'skip-gram':
             neg_loss_weight_v = _get_neg_loss_weight(conf) / num_negatives
             neg_loss_weight = np.ones((output_len, 1)) + \
                 (1 - y_true) / 2.0 * (neg_loss_weight_v - 1)
-            task_loss = -neg_loss_weight * K.log(K.sigmoid(y_true * y_pred))
+            task_loss = -neg_loss_weight * safer_log(K.sigmoid(y_true * y_pred))
             task_loss = K.sum(task_loss) / batch_size_p
         elif loss == 'mse':
             neg_loss_weight_v = _get_neg_loss_weight(conf) / num_negatives
@@ -95,13 +95,13 @@ def get_neg_shared_loss(loss, batch_size_p, conf):
         elif loss == 'log-loss':
             sscaling = _get_gamma(conf)
             diff_mat = K.diag(y_pred, batch_size_p) - y_pred
-            task_loss = K.mean(-K.log(K.sigmoid(sscaling * diff_mat)))
+            task_loss = K.mean(-safer_log(K.sigmoid(sscaling * diff_mat)))
         elif loss == 'skip-gram':
             neg_loss_weight_v = _get_neg_loss_weight(conf) / (batch_size_p - 1)
             neg_loss_weight = np.diag([1 - neg_loss_weight_v] * batch_size_p) + \
                 neg_loss_weight_v
             label_mat = np.diag([2] * batch_size_p) - 1 
-            task_loss = -neg_loss_weight * K.log(K.sigmoid(label_mat * y_pred))
+            task_loss = -neg_loss_weight * safer_log(K.sigmoid(label_mat * y_pred))
             task_loss = K.sum(task_loss) / batch_size_p
         elif loss == 'mse':
             neg_loss_weight_v = _get_neg_loss_weight(conf) / (batch_size_p - 1)
@@ -133,7 +133,7 @@ def get_sampled_neg_shared_loss(loss, batch_size_p, num_negatives, conf):
         elif loss == 'log-loss':
             sscaling = _get_gamma(conf)
             diff_mat = K.reshape(y_pred[:, 0], (-1,1)) - y_pred[:, 1:]
-            task_loss = K.mean(-K.log(K.sigmoid(sscaling * diff_mat)))
+            task_loss = K.mean(-safer_log(K.sigmoid(sscaling * diff_mat)))
         elif loss == 'skip-gram':
             neg_loss_weight_v = _get_neg_loss_weight(conf) / num_negatives
             neg_loss_weight = np.ones([batch_size_p, 1 + num_negatives], 
@@ -142,7 +142,7 @@ def get_sampled_neg_shared_loss(loss, batch_size_p, num_negatives, conf):
             label_mat = np.ones((batch_size_p, 1 + num_negatives),
                                 dtype=np.float32)
             label_mat[:, 1:] = -1
-            task_loss = -neg_loss_weight * K.log(K.sigmoid(label_mat * y_pred))
+            task_loss = -neg_loss_weight * safer_log(K.sigmoid(label_mat * y_pred))
             task_loss = K.sum(task_loss) / batch_size_p
         elif loss == 'mse':
             neg_loss_weight_v = _get_neg_loss_weight(conf) / num_negatives
@@ -198,14 +198,14 @@ def get_group_neg_shared_loss(pred, pos_idxs, loss, batch_size_p, conf):
     elif loss == 'log-loss':
         sscaling = _get_gamma(conf)
         diff_mat = pred_pos - pred
-        task_loss = K.mean(-K.log(K.sigmoid(sscaling * diff_mat)))
+        task_loss = K.mean(-safer_log(K.sigmoid(sscaling * diff_mat)))
     elif loss == 'skip-gram':
         neg_loss_weight_v = _get_neg_loss_weight(conf) / num_negatives
         label_mat = create_mask(label_mat, pred_shape, pos_idxs,
                                 1, -1, zero)
         neg_loss_weight = create_mask(negw_mat, pred_shape, pos_idxs,
                                       1, neg_loss_weight_v, zero)
-        task_loss = -neg_loss_weight * K.log(K.sigmoid(label_mat * pred))
+        task_loss = -neg_loss_weight * safer_log(K.sigmoid(label_mat * pred))
         task_loss = K.sum(task_loss) / batch_size_p
     elif loss == 'mse':
         neg_loss_weight_v = _get_neg_loss_weight(conf) / num_negatives
@@ -371,7 +371,7 @@ def evaluate_mat(truth_mat, pred_mat, topk, per_user=False,
 
 
 class Evaluator(object):
-    def __init__(self, data_helper, data_spec, conf, eval_scheme=None):
+    def __init__(self, data_helper, data_spec, conf, eval_scheme):
         self.data_helper = data_helper
         self.data_spec = data_spec
         self.conf = conf
@@ -386,7 +386,9 @@ class Evaluator(object):
         self.user_count = data_spec.user_count
         self.item_count = data_spec.item_count
         self.eval_topk = conf.eval_topk
-        self._prepare_for_whole_eval()
+        if eval_scheme == "whole":
+            # Prepare only in case of whole evaluation, due to memory consumption.
+            self._prepare_for_whole_eval()
 
     def _check_eval_sheme(self, eval_scheme):
         assert eval_scheme == 'given' or eval_scheme == 'whole', \
@@ -443,10 +445,6 @@ class Evaluator(object):
         eval_topk = self.eval_topk
         user_count = self.user_count
         item_count = self.item_count
-        train_true_mat = self.train_true_mat
-        test_true_mat = self.test_true_mat
-        train_items = self.train_items
-        test_items = self.test_items
 
         if eval_scheme == 'given':
             model_dict = model
@@ -464,6 +462,11 @@ class Evaluator(object):
             assert eval_topk > 0, \
                 '[ERROR] eval_top {} must > 0'.format(eval_topk) + \
                 'when eval_scheme=whole'
+            train_true_mat = self.train_true_mat
+            test_true_mat = self.test_true_mat
+            train_items = self.train_items
+            test_items = self.test_items
+
             model_predict = model
             predict_only_local = True \
                 if predict_only or use_async_eval else False

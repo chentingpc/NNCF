@@ -4,7 +4,7 @@ import numpy as np
 import random
 from data_utils import get_pretrain_folder
 from conf_utils import get_conf_base
-from keras.optimizers import Adam, SGD, RMSprop
+from keras.optimizers import Adam, SGD, RMSprop, Adagrad
 
 
 class Conf(object):
@@ -46,13 +46,14 @@ class Conf(object):
                 if self.loss == 'max-margin' or self.loss == 'log-loss' \
                 else False
 
-        if self.learn_rate > 0:
+        if False: # self.learn_rate > 0:
             self.optimizer = Adam(self.learn_rate)
         else:
             from optimizer import AdamOptimizer
             #import tensorflow as tf
             #self.optimizer = tf.train.GradientDescentOptimizer(1e4)
-            self.optimizer = AdamOptimizer(-self.learn_rate)
+            self.optimizer = AdamOptimizer(self.learn_rate)
+            # self.optimizer = Adagrad(self.learn_rate)
 
         pretrain_folder = get_pretrain_folder(self.data_name, aug=False)
         sentvec_filepath = pretrain_folder + 'sentence_vectors_50d.txt'
@@ -139,7 +140,10 @@ def get_conf_best(data_name, param_dict=None):
         conf.interaction_multiplier = False
         conf.pretrain['pretrain_combine_dropout'] = 0.1
     else:
-        assert False, 'unknown data_name: %s' % data_name
+        conf.u_reg = 0.0
+        conf.interaction_multiplier = False
+        conf.pretrain['pretrain_combine_dropout'] = 0.1
+        # assert False, 'unknown data_name: %s' % data_name
     try:
         param_dict['reset_after_getconf']
         conf.__dict__.update(param_dict)

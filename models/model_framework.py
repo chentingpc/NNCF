@@ -85,7 +85,8 @@ def get_model(conf, data_helper, model_name):
     elif model_name == 'mf':
         Emb_C = Embedding(item_count, item_dim, name='item_embedding')
         C_emb = Reshape((item_dim, ))(Emb_C(cid))
-        C_emb_compact = C_emb
+        C_emb_compact = C_emb  # remember to set model_group_neg_shared = model_neg_shared
+        # C_emb_compact = Reshape((item_dim, ))(Emb_C(cid_u))  # can increase overhead.
     else:
         if model_name == 'basic_embedding':
             Content_model = MeanPool(data_spec, conf).get_model()
@@ -159,6 +160,8 @@ def get_model(conf, data_helper, model_name):
         output=[pred_score_neg_shared_comp])
     model_group_neg_shared.compile(optimizer=optimizer, \
         loss=lambda y_true, y_pred: loss_neg_shared_comp)  # dummy
+    if model_name == "mf":
+        model_group_neg_shared = model_neg_shared
     
     # sampled negatives are shared
     # first batch_size_p pairs are positive ones, 

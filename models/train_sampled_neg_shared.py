@@ -6,8 +6,8 @@ from data_utils import group_shuffle_train
 from train_base import TrainerBase
 
 class Trainer(TrainerBase):
-    def __init__(self, model_dict, conf, data_helper):
-        super(Trainer, self).__init__(model_dict, conf, data_helper)
+    def __init__(self, model_dict, conf, data_helper, eval_scheme):
+        super(Trainer, self).__init__(model_dict, conf, data_helper, eval_scheme)
         self.model_train = model_dict['model_sampled_neg_shared']
         self.neg_sign = np.array([-1], dtype='int32') \
             if conf.loss == 'skip-gram' else 0
@@ -16,10 +16,11 @@ class Trainer(TrainerBase):
         self._iidx = {'user': np.arange(_num_in_train[0]),
                       'item': np.arange(_num_in_train[1])}
 
-    def train(self, eval_scheme=None, use_async_eval=True):
+    def train(self, use_async_eval=True, emb_saveto=None):
         model_train = self.model_train
         conf = self.conf
         data_helper = self.data_helper
+        eval_scheme = self.eval_scheme
         train = data_helper.data['train']
         C = data_helper.data['C']
         num_negatives = conf.num_negatives
@@ -29,8 +30,12 @@ class Trainer(TrainerBase):
                                   1 + num_negatives))
         response_batch[:, 1:] = self.neg_sign
 
+        train_time_stamp = time.time()  # more accurate measure of real train time.
+        train_time_stamp0 = train_time_stamp
         train_time = []
         for epoch in range(conf.max_epoch + 1):
+            if emb_saveto is not None:
+                self.save_emb(emb_saveto + '-epoch{}'.format(epoch))
             bb, b = 0, conf.batch_size_p
             train = group_shuffle_train(train, by='item', \
                 chop=conf.chop_size, iidx=self._iidx['item'])
@@ -48,12 +53,16 @@ class Trainer(TrainerBase):
                 train_batch = np.vstack((train_batch_p, train_batch_n))
                 user_batch = train_batch[:, 0]
                 item_batch = train_batch[:, 1]
+                right_before_train = time.time()
                 cost += model_train.train_on_batch([user_batch, item_batch],
                     [response_batch])
+                right_after_train = time.time()
+                train_time_stamp += right_after_train - right_before_train
                 bb = b
             if epoch > 0:
                 train_time.append(time.time() - t_start)
-            print get_cur_time(), 'epoch %d (%d it)' % (epoch, it), \
+            print get_cur_time(), 'stamp %.2f epoch %d (%d it)' % ( \
+                train_time_stamp - train_time_stamp0, epoch, it), \
                 'cost %.5f' % (cost / it if it > 0 else -1),
             nan_detection('cost', cost)
             if eval_scheme is None:
@@ -63,5 +72,6 @@ class Trainer(TrainerBase):
                     if use_async_eval and epoch != conf.max_epoch else False
                 try: ps[-1].join()
                 except: pass
-                ps = self.test(eval_scheme, use_async_eval=async_eval)
-        print 'Training time (sec) per epoch:', np.mean(train_time)
+                ps = self.test(use_async_eval=async_eval)
+        print 'Training time (sec) per epoch: {}, or {} (more accurate).'.format(
+            np.mean(train_time), (train_time_stamp - train_time_stamp0) / conf.max_epoch)

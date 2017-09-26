@@ -3,20 +3,21 @@ cd ../../
 
 result_root_folder=./results
 none_op='pretrain'  # set to pretrain to disable joint text embedding
-eval_scheme=whole@50
+#eval_scheme=whole@50
+eval_scheme=none
 chop_size=4
 shuffle_st=by_item
-max_epoch=30
-gpu=1
+max_epoch=100
+gpu=0
 
 for train_scheme in group_sample ; do
-for model_choice in cnn_embedding rnn_embedding; do
-#for model_choice in basic_embedding cnn_embedding rnn_embedding; do
-for data_name in citeulike_title_and_abstract ; do
-#for data_name in citeulike_title_and_abstract citeulike_title_only ; do
-for loss in skip-gram mse ; do
+for model_choice in mf; do
+#for data_name in network-blogcatalog ; do
+for data_name in network-flickr ; do
+#for data_name in network-youtube ; do
+for loss in skip-gram ; do
 for chop_size in $chop_size; do
-for numneg in 10 ; do
+for numneg in 1 ; do
 for neg_dist in unigram; do
 for group_shuffling_trick in True; do
 for neg_loss_weight in 128; do
@@ -35,15 +36,16 @@ for learn_rate in 0.01 ; do
 	fi
 
     echo ******, $train_scheme, $model_choice, $data_name, $loss, $batch_size_p, $learn_rate, $neg_dist, $chop_size, $group_shuffling_trick
-    data_name_final=$data_name\_fold1
+    data_name_final=$data_name
     result_folder=$result_root_folder/$data_name/$model_choice/$train_scheme/
 	if [ ! -d $result_folder ]; then
 		mkdir -p $result_folder
 	fi
     log=$result_folder/log-eval$eval_scheme\-loss$loss\-numneg$numneg\-negw$neg_loss_weight\-gamma$gamma\-lr$learn_rate\-bsize$batch_size_p\-ndist$neg_dist\-chop$chop_size
+    emb_name=$result_folder/emb
     param_dict="{'reset_after_getconf': True, 'max_epoch': $max_epoch, 'loss': '$loss', 'num_negatives': $numneg, 'neg_loss_weight': $neg_loss_weight, 'loss_gamma': $gamma, 'learn_rate': $learn_rate, 'neg_dist': '$neg_dist', 'neg_sampling_power': 1, 'batch_size_p': $batch_size_p, 'chop_size': $chop_size, '$none_op': None, 'group_shuffling_trick': $group_shuffling_trick, 'shuffle_st': '$shuffle_st'}"
 
-    stdbuf -oL -eL python main.py --data_name $data_name_final --model_choice $model_choice --conf_choice best --train_scheme $train_scheme --eval_scheme $eval_scheme --param_dict "$param_dict" --gpu $gpu> $log
+    stdbuf -oL -eL python main.py --data_name $data_name_final --model_choice $model_choice --conf_choice best --train_scheme $train_scheme --eval_scheme $eval_scheme --param_dict "$param_dict" --gpu $gpu --save_emb_name=$emb_name > $log
 done
 done
 done

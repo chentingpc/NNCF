@@ -56,6 +56,8 @@ def normalized_embedding(X):
     # n x dim
     return (1. / np.sqrt(np.sum(X**2, axis=1)) * X.T).T
 
+def safer_log(x):
+    return K.log(x + 1e-8)
 
 ############################
 # Keras backend extensions

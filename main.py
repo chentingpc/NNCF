@@ -18,6 +18,7 @@ parser.add_argument('--train_scheme', default='original')
 parser.add_argument('--eval_scheme', default='given')
 parser.add_argument('--param_dict', default=None)
 parser.add_argument('--pred_name', default=None)
+parser.add_argument('--save_emb_name', default=None)
 parser.add_argument('--gpu', default=None, type=str)
 args_config = parser.parse_args()
 data_name = args_config.data_name
@@ -25,7 +26,10 @@ model_choice = args_config.model_choice
 conf_choice = args_config.conf_choice
 train_scheme = args_config.train_scheme
 eval_scheme = args_config.eval_scheme
+if eval_scheme.lower() == "none":
+    eval_scheme = None
 pred_filename = args_config.pred_name
+save_emb_filename = args_config.save_emb_name
 if args_config.param_dict is None:
     param_dict = None
 else:
@@ -57,7 +61,7 @@ else:
     assert False, 'model choice %s not defined' % model_choice
 conf = get_conf(data_name, conf_choice, param_dict)
 # basic postprocessing
-if eval_scheme.find('@') > 0:
+if eval_scheme is not None and eval_scheme.find('@') > 0:
     p = eval_scheme.find('@')
     conf.eval_topk = int(eval_scheme[p + 1:])
     eval_scheme = eval_scheme[:p]
@@ -99,7 +103,10 @@ elif train_scheme == 'sampled_neg_shared':
 else:
     assert False, '[ERROR] Unknown train_scheme {}'.format(train_scheme)
 
-trainer = Trainer(model_dict, conf, data_helper)
-trainer.train(eval_scheme)
+trainer = Trainer(model_dict, conf, data_helper, eval_scheme)
+trainer.train(emb_saveto=save_emb_filename)
 if pred_filename is not None:
-    _ = trainer.predict(eval_scheme, pred_filename)
+    _ = trainer.predict(pred_filename)
+if save_emb_filename is not None:
+    _ = trainer.save_emb(save_emb_filename)
+

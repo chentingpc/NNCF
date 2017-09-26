@@ -94,6 +94,15 @@ def _get_data(data_name='citeulike_title_only'):
         elif  data_name.startswith('news_title_and_abstract'):
             content_file = data_root + '/news/title_and_abstract/%s/data_content.pkl' % sub_folder
             split_file = data_root + '/news/title_and_abstract/%s/data_split_cold_item.pkl' % sub_folder
+    elif data_name.startswith('network-flickr'):
+        data_root = home + '/dbase/network/network_embedding/original/'
+        split_file = data_root + '/flickr-nncf.pkl'
+    elif data_name.startswith('network-blogcatalog'):
+        data_root = home + '/dbase/network/network_embedding/original/'
+        split_file = data_root + '/blogcatalog-nncf.pkl'
+    elif data_name.startswith('network-youtube'):
+        data_root = home + '/dbase/network/network_embedding/original/'
+        split_file = data_root + '/youtube-nncf.pkl'
     else:
         error()
 
@@ -105,6 +114,7 @@ def _get_data(data_name='citeulike_title_only'):
 
 
 def get_pretrain_folder(data_name, aug=True):
+    return ""
     # used in conf
     if data_name.startswith('citeulike_title_only'):
         data_name_short = 'citeulike/title_only/'
@@ -127,6 +137,7 @@ def get_pretrain_folder(data_name, aug=True):
 
 
 def get_pretrained_vectors(conf, data_spec, data_helper):
+    return None, None
     # load pretrained word vectors, and sentence vectors
     if conf.pretrain:
         wordvec_filepath = conf.pretrain['wordvec_filepath']
