@@ -1,4 +1,12 @@
 # NNCF
+```
+Modified for network embedding.
+Assuming data are in ~/dbase/network/network_embedding/original/..
+Only mf mode is supported.
+group_neg_shared does not use unique id..
+also have scoring function added.
+See scripts for details.
+```
 
 Introduction
 ----------------
